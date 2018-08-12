@@ -126,7 +126,7 @@ function love.update(dt)
 
 	-- generate cakes
 	if love.math.random() < 0.01 then
-		table.insert(cakeState.activeCakes, {quad=cakeQuads[love.math.random(0, 1)], x=love.math.random(0, conf.world.w - conf.cakeImgSize), y=70, alive=true})
+		table.insert(cakeState.activeCakes, {quad=cakeQuads[love.math.random(0, 3)], x=love.math.random(0, conf.world.w - conf.cakeImgSize), y=70, alive=true})
 	end
 
 	-- move player
