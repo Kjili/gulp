@@ -164,7 +164,7 @@ function love.update(dt)
 		cake.y = cake.y + cakeState.cakeSpeed
 
 		-- check cake coming
-		if math.abs(gulpState.pos.x - cake.x) < conf.gulpImgSize/gulpState.size/2 and gulpState.pos.y - cake.y < 100 then
+		if math.abs(gulpState.pos.x - cake.x) < conf.gulpImgSize/gulpState.size/2 and gulpState.pos.y - cake.y < 100 and cake.y < gulpState.pos.y then
 			spotCake = true
 		end
 
@@ -185,7 +185,7 @@ function love.update(dt)
 		-- move bad things
 		badness.y = badness.y + cakeState.cakeSpeed
 		-- check badness coming
-		if math.abs(gulpState.pos.x - badness.x) < conf.gulpImgSize/gulpState.size/2 and gulpState.pos.y - badness.y < 100 then
+		if math.abs(gulpState.pos.x - badness.x) < conf.gulpImgSize/gulpState.size/2 and gulpState.pos.y - badness.y < 100 and badness.y < gulpState.pos.y then
 			spotCake = true
 		end
 		-- check badness "collision"
