@@ -27,7 +27,9 @@ local conf = {
 	gulpMaxSize = 2
 }
 
-local gulpState = {}
+local gulpState = {
+	initialPoops = 2
+}
 
 local cakeState = {
 	cakeBonus = 200
@@ -66,11 +68,13 @@ function start()
 	gulpState.foodCount = 0
 	gulpState.exploding = -1
 	gulpState.poop = false
-	gulpState.poopCount = 2
+	gulpState.poopCount = gulpState.initialPoops
 
 	cakeState.activeCakes = {}
 	cakeState.cakeSpeed = 0.5
+	cakeState.maxSpeed = 1
 	cakeState.cakeCount = 0
+	cakeState.probability = 0.01
 
 	badState.activeBadness = {}
 
@@ -134,7 +138,7 @@ function love.update(dt)
 	end
 
 	-- generate cakes and bad things
-	if love.math.random() < 0.01 then
+	if love.math.random() < cakeState.probability then
 		if love.math.random() < 0.001 then
 			table.insert(badState.activeBadness, {quad=badQuads[0], x=love.math.random(0, conf.world.w - conf.cakeImgSize), y=70})
 		else
@@ -220,6 +224,16 @@ function love.update(dt)
 	if cakeState.cakeCount >= cakeState.cakeBonus then
 		gulpState.poopCount = gulpState.poopCount + 1
 		cakeState.cakeCount = 0
+		-- adjust difficulty
+		if gulpState.poopCount > gulpState.initialPoops then
+			cakeState.cakeSpeed = math.min(cakeState.cakeSpeed + 0.1 * (gulpState.poopCount - gulpState.initialPoops), cakeState.maxSpeed)
+			if gulpState.size == conf.gulpMinSize then
+				cakeState.probability = cakeState.probability + 0.01 * (gulpState.poopCount - gulpState.initialPoops)
+			end
+		else
+			cakeState.cakeSpeed = 0.5
+			cakeState.probability = 0.01
+		end
 	end
 
 	-- exploding animation
