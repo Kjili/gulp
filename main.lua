@@ -120,8 +120,14 @@ function love.load()
 	love.graphics.setFont(font)
 
 	-- play music
-	--sound = love.audio.newSource("assets/sounds/sound.ogg", "stream")
-	--sound:setLooping(true)
+	gulpSound = love.audio.newSource("assets/gulp.ogg", "static")
+	nomSound = love.audio.newSource("assets/nom.ogg", "static")
+	poopSound = love.audio.newSource("assets/poop.ogg", "static")
+	explodeSound = love.audio.newSource("assets/explode.ogg", "static")
+
+	--background = love.audio.newSource("assets/background.ogg", "stream")
+	--background:setLooping(true)
+	--love.audio.play(background)
 end
 
 function love.update(dt)
@@ -203,6 +209,7 @@ function love.update(dt)
 	elseif gulpState.poop then
 		poopAnimation.currentTime = poopAnimation.currentTime + dt
 		if poopAnimation.currentTime >= poopAnimation.duration then
+			love.audio.play(poopSound)
 			gulpState.poopCount = gulpState.poopCount - 1
 			poopAnimation.currentTime = 0
 			gulpState.foodCount = 0
@@ -214,6 +221,7 @@ function love.update(dt)
 		gulpState.activeQuad = poopAnimation.quad
 	-- start eating
 	elseif eatCake and gulpState.eating < 0 then
+		love.audio.play(nomSound)
 		gulpState.eating = gulpState.eating + 1
 		gulpState.activeQuad = eatingAnimation.quadIndices[gulpState.eating]
 	-- eating animation
@@ -226,6 +234,7 @@ function love.update(dt)
 		gulpState.activeQuad = eatingAnimation.quadIndices[gulpState.eating]
 	-- spot cake
 	elseif spotCake then
+		love.audio.play(gulpSound)
 		gulpState.activeQuad = 2
 	else
 		gulpState.activeQuad = 0
@@ -233,6 +242,7 @@ function love.update(dt)
 
 	-- explode
 	if gulpState.size <= conf.gulpMaxSize and gulpState.exploding < 0 then
+		love.audio.play(explodeSound)
 		gulpState.exploding = gulpState.exploding + 1
 		gulpState.activeQuad = explodingAnimation.quadIndices[gulpState.exploding]
 		endTime = love.timer.getTime() - startTime
