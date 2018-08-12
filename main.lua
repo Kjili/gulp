@@ -27,41 +27,25 @@ local conf = {
 	gulpMaxSize = 2
 }
 
-local gulpState = {
-	size = conf.gulpMinSize,
-	speed = {x=0, y=0},
-	pos = {x=conf.world.h/2, y=conf.world.h-70},
-	activeQuad = 0,
-	eating = -1,
-	foodCount = 0,
-	exploding = -1,
-	poop = false,
-	poopCount = 2
-}
+local gulpState = {}
 
 local cakeState = {
-	activeCakes = {},
-	cakeSpeed = 0.5,
-	cakeCount = 0,
 	cakeBonus = 200
 }
 
 local eatingAnimation = {
 	quadIndices = {[0]=3, 4, 3, 4, 5},
-	duration = 0.2,
-	currentTime = 0
+	duration = 0.2
 }
 
 local poopAnimation = {
 	quad = 1,
-	duration = 0.2,
-	currentTime = 0
+	duration = 0.2
 }
 
 local explodingAnimation = {
 	quadIndices = {[0]=6, 7, 6, 7, 8},
-	duration = 0.1,
-	currentTime = 0
+	duration = 0.1
 }
 
 local player = {
@@ -71,7 +55,7 @@ local player = {
 
 local activePoops = {}
 
-function restart()
+function start()
 	gulpState.size = conf.gulpMinSize
 	gulpState.speed = {x=0, y=0}
 	gulpState.pos = {x=conf.world.h/2, y=conf.world.h-70}
@@ -81,12 +65,17 @@ function restart()
 	gulpState.exploding = -1
 	gulpState.poop = false
 	gulpState.poopCount = 2
-	activePoops = {}
+
 	cakeState.activeCakes = {}
 	cakeState.cakeSpeed = 0.5
 	cakeState.cakeCount = 0
+
+	activePoops = {}
+
 	eatingAnimation.currentTime = 0
+	poopAnimation.currentTime = 0
 	explodingAnimation.currentTime = 0
+
 	gameOver = false
 	startTime = love.timer.getTime()
 end
@@ -112,9 +101,6 @@ function love.load()
 	end
 	poopImg = love.graphics.newImage("assets/poop.png")
 
-	gameOver = false
-	startTime = love.timer.getTime()
-
 	-- change default font size
 	font = love.graphics.newFont(24)
 	love.graphics.setFont(font)
@@ -124,15 +110,16 @@ function love.load()
 	nomSound = love.audio.newSource("assets/nom.ogg", "static")
 	poopSound = love.audio.newSource("assets/poop.ogg", "static")
 	explodeSound = love.audio.newSource("assets/explode.ogg", "static")
-
 	--background = love.audio.newSource("assets/background.ogg", "stream")
 	--background:setLooping(true)
-	--love.audio.play(background)
+
+	gameStart = true
+	welcomeText = "Welcome to Gulp!\nIt's a little monster that likes cakes a bit too much for it's own well-being.\nYou need to keep it away from it before it grows over your (and it's own) head!\nPress \"a\" to move to the left, \"d\" to move to the right and \"s\" to poop.\n\nPress \"Return\" to start and have fun!"
 end
 
 function love.update(dt)
-	--love.audio.play(sound)
-	if gameOver or gulpState.exploding >= #explodingAnimation.quadIndices then
+	-- freeze at game over
+	if gameStart or gameOver or gulpState.exploding >= #explodingAnimation.quadIndices then
 		gameOver = true
 		return
 	end
@@ -141,9 +128,6 @@ function love.update(dt)
 	if love.math.random() < 0.01 then
 		table.insert(cakeState.activeCakes, {quad=cakeQuads[love.math.random(0, 1)], x=love.math.random(0, conf.world.w - conf.cakeImgSize), y=70, alive=true})
 	end
-
-	spotCake = false
-	eatCake = false
 
 	-- move player
 	gulpState.pos.x = gulpState.speed.x * dt + gulpState.pos.x
@@ -157,6 +141,10 @@ function love.update(dt)
 	end
 	-- update y pos
 	gulpState.pos.y = conf.world.h-70-conf.gulpImgSize/gulpState.size
+
+	-- set state changing booleans
+	spotCake = false
+	eatCake = false
 
 	for key, cake in pairs(cakeState.activeCakes) do
 		-- move cakes
@@ -252,6 +240,14 @@ function love.update(dt)
 end
 
 function love.draw()
+	-- print game help on start
+	if gameStart then
+		love.graphics.printf({{0, 255, 0, 255}, welcomeText}, 0, math.floor(conf.world.h/3), conf.world.w, "center")
+		love.graphics.draw(gulpSprite, gulpQuads[2], conf.world.w/2 - conf.gulpImgSize/conf.gulpMinSize/2, conf.world.h/4 - conf.gulpImgSize/conf.gulpMinSize/2, 0, 1/conf.gulpMinSize, 1/conf.gulpMinSize)
+		love.graphics.draw(cakeSprite, cakeQuads[0], conf.world.w/2 - conf.cakeImgSize/2, conf.world.h/4 - conf.gulpImgSize/conf.gulpMinSize - conf.cakeImgSize/2)
+		return
+	end
+
 	-- header
 	love.graphics.draw(poopImg, 10, 0)
 	love.graphics.print(tostring(gulpState.poopCount), math.floor(conf.poopImgSize/2), math.floor(conf.poopImgSize/3))
@@ -261,14 +257,16 @@ function love.draw()
 		love.graphics.printf(string.format("Time: %.2f", endTime), 0, 0, conf.world.w, "center")
 	end
 	love.graphics.printf(string.format("Eaten: %i of %i", gulpState.foodCount, (conf.gulpMinSize + 1) - gulpState.size), 0, 0, conf.world.w-10, "right")
+
 	-- game elements
+	for key, xPoop in pairs(activePoops) do
+		love.graphics.draw(poopImg, xPoop + conf.poopImgSize/2, conf.world.h - conf.poopImgSize)
+	end
 	love.graphics.draw(gulpSprite, gulpQuads[gulpState.activeQuad], gulpState.pos.x, gulpState.pos.y, 0, 1/gulpState.size, 1/gulpState.size)
 	for key, cake in pairs(cakeState.activeCakes) do
 		love.graphics.draw(cakeSprite, cake.quad, cake.x, cake.y)
 	end
-	for key, xPoop in pairs(activePoops) do
-		love.graphics.draw(poopImg, xPoop + conf.poopImgSize/2, conf.world.h - conf.poopImgSize)
-	end
+
 	-- print game stats
 	if gameOver then
 		currTimeNote = string.format("Your little monster had too much cake. Sorry.\nTime of survival: %.2f seconds.\n", endTime)
@@ -308,13 +306,15 @@ function love.keypressed(key, scancode, isrepeat)
 	if key == "s" and gulpState.poopCount > 0 and gulpState.exploding < 0 and gulpState.eating < 0 and gulpState.size < conf.gulpMinSize then
 		gulpState.poop = true
 	end
-	if key == "return" and gameOver then
-		restart()
+	if key == "return" and (gameOver or gameStart) then
+		gameStart = false
+		start()
 	end
 end
 
 function love.keyreleased(key, scancode, isrepeat)
 	if key == "a" or key == "d" then
+		-- stop
 		gulpState.speed.x = 0
 	end
 end
