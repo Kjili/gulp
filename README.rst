@@ -9,6 +9,8 @@ The tricky part is, the monster will grow whenever it eats a cake, which makes y
 
 How long will your monster survive?
 
+![Ingame Screenshot](screenshot.png?raw=true "Ingame Screenshot")
+
 Setup
 =====
 
