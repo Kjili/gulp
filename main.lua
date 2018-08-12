@@ -33,6 +33,8 @@ local cakeState = {
 	cakeBonus = 200
 }
 
+local badState = {}
+
 local eatingAnimation = {
 	quadIndices = {[0]=3, 4, 3, 4, 5},
 	duration = 0.2
@@ -70,6 +72,8 @@ function start()
 	cakeState.cakeSpeed = 0.5
 	cakeState.cakeCount = 0
 
+	badState.activeBadness = {}
+
 	activePoops = {}
 
 	eatingAnimation.currentTime = 0
@@ -100,6 +104,11 @@ function love.load()
 		gulpQuads[i] = love.graphics.newQuad(i*conf.gulpImgSize, 0, conf.gulpImgSize, conf.gulpImgSize, gulpSprite:getDimensions())
 	end
 	poopImg = love.graphics.newImage("assets/poop.png")
+	badSprite = love.graphics.newImage("assets/bad.png")
+	badQuads = {}
+	for i = 0, badSprite:getWidth()/conf.cakeImgSize do
+		badQuads[i] = love.graphics.newQuad(i*conf.cakeImgSize, 0, conf.cakeImgSize, conf.cakeImgSize, cakeSprite:getDimensions())
+	end
 
 	-- change default font size
 	font = love.graphics.newFont(24)
@@ -114,7 +123,7 @@ function love.load()
 	--background:setLooping(true)
 
 	gameStart = true
-	welcomeText = "Welcome to Gulp!\nIt's a little monster that likes cakes a bit too much for it's own well-being.\nYou need to keep it away from it before it grows over your (and it's own) head!\nPress \"a\" to move to the left, \"d\" to move to the right and \"s\" to poop.\n\nPress \"Return\" to start and have fun!"
+	welcomeText = "Welcome to Gulp!\nIt's a little monster that likes cakes a bit too much for it's own good.\nYou need to keep it away from it before it grows over your (and it's own) head!\nPay attention to the inedible!\nPress \"a\" to move to the left, \"d\" to move to the right and \"s\" to poop.\n\nPress \"Return\" to start and have fun!"
 end
 
 function love.update(dt)
@@ -124,9 +133,13 @@ function love.update(dt)
 		return
 	end
 
-	-- generate cakes
+	-- generate cakes and bad things
 	if love.math.random() < 0.01 then
-		table.insert(cakeState.activeCakes, {quad=cakeQuads[love.math.random(0, 3)], x=love.math.random(0, conf.world.w - conf.cakeImgSize), y=70, alive=true})
+		if love.math.random() < 0.001 then
+			table.insert(badState.activeBadness, {quad=badQuads[0], x=love.math.random(0, conf.world.w - conf.cakeImgSize), y=70})
+		else
+			table.insert(cakeState.activeCakes, {quad=cakeQuads[love.math.random(0, 3)], x=love.math.random(0, conf.world.w - conf.cakeImgSize), y=70})
+		end
 	end
 
 	-- move player
@@ -156,7 +169,7 @@ function love.update(dt)
 		end
 
 		-- check cake "collision"
-		if math.abs(gulpState.pos.x - cake.x) < conf.gulpImgSize/gulpState.size/2 and gulpState.pos.y - cake.y < 5 then
+		if math.abs(gulpState.pos.x - cake.x) < conf.gulpImgSize/gulpState.size/2 and math.abs(gulpState.pos.y - cake.y) < 5 then
 			eatCake = true
 			cakeState.activeCakes[key] = nil
 		end
@@ -165,6 +178,30 @@ function love.update(dt)
 		if cake.y > conf.world.h then
 			cakeState.cakeCount = cakeState.cakeCount + 1
 			cakeState.activeCakes[key] = nil
+		end
+	end
+
+	for key, badness in pairs(badState.activeBadness) do
+		-- move bad things
+		badness.y = badness.y + cakeState.cakeSpeed
+		-- check badness coming
+		if math.abs(gulpState.pos.x - badness.x) < conf.gulpImgSize/gulpState.size/2 and gulpState.pos.y - badness.y < 100 then
+			spotCake = true
+		end
+		-- check badness "collision"
+		if math.abs(gulpState.pos.x - badness.x) < conf.gulpImgSize/gulpState.size/2 and math.abs(gulpState.pos.y - badness.y) < 5 then
+			badState.activeBadness[key] = nil
+			love.audio.play(explodeSound)
+			gulpState.exploding = gulpState.exploding + 1
+			gulpState.activeQuad = explodingAnimation.quadIndices[gulpState.exploding]
+			endTime = love.timer.getTime() - startTime
+			player.bestTime = math.max(endTime, player.bestTime)
+			deathReason = "Your little monster ate something it could not digest.\n"
+			return
+		end
+		-- delete bad things moving out of the world
+		if badness.y > conf.world.h then
+			badState.activeBadness[key] = nil
 		end
 	end
 
@@ -235,6 +272,7 @@ function love.update(dt)
 		gulpState.activeQuad = explodingAnimation.quadIndices[gulpState.exploding]
 		endTime = love.timer.getTime() - startTime
 		player.bestTime = math.max(endTime, player.bestTime)
+		deathReason = "Your little monster had too much cake. Sorry.\n"
 	end
 
 end
@@ -266,10 +304,13 @@ function love.draw()
 	for key, cake in pairs(cakeState.activeCakes) do
 		love.graphics.draw(cakeSprite, cake.quad, cake.x, cake.y)
 	end
+	for key, badness in pairs(badState.activeBadness) do
+		love.graphics.draw(badSprite, badness.quad, badness.x, badness.y)
+	end
 
 	-- print game stats
 	if gameOver then
-		currTimeNote = string.format("Your little monster had too much cake. Sorry.\nTime of survival: %.2f seconds.\n", endTime)
+		currTimeNote = string.format("Time of survival: %.2f seconds.\n", endTime)
 		if endTime == player.bestTime then
 			bestTimeNote = "This is your current best time!\n"
 		else
@@ -286,7 +327,7 @@ function love.draw()
 			lastTimeNote = ""
 			player.lastTime = endTime
 		end
-		love.graphics.printf({{0, 255, 0, 255}, currTimeNote .. bestTimeNote .. lastTimeNote}, 0, math.floor(conf.world.h/2), conf.world.w, "center")
+		love.graphics.printf({{0, 255, 0, 255}, deathReason .. currTimeNote .. bestTimeNote .. lastTimeNote}, 0, math.floor(conf.world.h/2), conf.world.w, "center")
 	end
 end
 
